@@ -3,7 +3,7 @@
 Matrikelnummern: 6349055, 8562648, 7673841, 1629518, 6549173
 
 In dieser README befindet sich die Dokumentation zu allen fünf Aufgaben der Portfolio-Prüfung des Moduls Cloud Computing und Big Data.
-In den Aufgaben zu den jeweiligen Ordnern befindet sich jeweils der Screencast.
+In den Aufgaben zu den jeweiligen Ordnern befindet sich jeweils der Screencast. Die Größeren Screencast sind über einen Link jeweils geteilt.
 
 Unsere gewählte Anwendungsidee lautet Binance Market Data – Crypto-Tick Analytics mit dem Ziel, aus vorhandenen Daten Vorhersagen ableiten zu können.
 
