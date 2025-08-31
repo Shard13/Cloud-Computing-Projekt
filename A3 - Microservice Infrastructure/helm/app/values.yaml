@@ -1,0 +1,26 @@
+# helm/app/values.yaml  (Basis-Defaults mit funktionierendem Default)
+
+# Sorgt für eindeutige Ressourcennamen wie: guess-v1-frontend
+fullnameOverride: guess-v1
+
+frontend:
+  enabled: true
+  image: ghcr.io/s231854/guess:guess-v1   # <-- Default-Image (v1)
+  replicas: 1
+  containerPort: 8501
+  servicePort: 80
+  env:
+    # Streamlit hinter Subpfad betreiben (sonst "weiße Seite")
+    - name: STREAMLIT_SERVER_BASE_URL_PATH
+      value: /guess/v1
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []   # bei privatem GHCR: [{ name: regcred }]
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: ""           # catch-all / hostlos
+      paths:
+        - path: /guess/v1
+          pathType: Prefix

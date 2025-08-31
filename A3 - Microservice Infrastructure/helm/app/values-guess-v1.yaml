@@ -1,0 +1,11 @@
+fullnameOverride: guess-v1
+
+frontend:
+  image: ghcr.io/s231854/guess:guess-v1
+
+ingress:
+  hosts:
+    - host: ""
+      paths:
+        - path: /guess/v1     # kein Regex
+          pathType: Prefix

@@ -1,0 +1,155 @@
+# ==========================
+# Install prerequisites
+# ==========================
+- name: Install prerequisites
+  apt:
+    name:
+      - curl
+      - gnupg
+      - lsb-release
+    update_cache: yes
+    state: present
+
+# ==========================
+# k3s server installation
+# ==========================
+- name: Install k3s server
+  shell: curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+  args:
+    creates: /usr/local/bin/k3s
+  when: "'k3s_server' in group_names"
+
+- name: Wait for k3s server to be ready
+  shell: k3s kubectl get node
+  register: k3s_status
+  retries: 10
+  delay: 30
+  until: k3s_status.rc == 0
+  when: "'k3s_server' in group_names"
+
+- name: Save node token for agents
+  command: cat /var/lib/rancher/k3s/server/node-token
+  register: node_token
+  when: "'k3s_server' in group_names"
+
+- name: Copy token to localhost
+  copy:
+    content: "{{ node_token.stdout }}"
+    dest: "./node-token"
+    mode: '0600'
+  delegate_to: localhost
+  become: no
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Helm installation
+# ==========================
+- name: Install Helm (server only)
+  shell: curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Copy Helm charts to server
+# ==========================
+- name: Copy Helm charts to server
+  copy:
+    src: "{{ playbook_dir }}/../helm/"
+    dest: "/tmp/helm"
+    mode: '0644'
+    remote_src: no
+    directory_mode: '0755'
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Deploy App Chart
+# ==========================
+- name: Create namespace for app
+  shell: /usr/local/bin/k3s kubectl create namespace microservices || true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+- name: Deploy App Helm chart
+  shell: |
+    helm upgrade --install "{{ helm_release_name }}" "/tmp/helm/app" \
+      --namespace microservices \
+      --create-namespace \
+      -f "/tmp/helm/app/values.yaml"
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: helm_app_result
+  retries: 2
+  delay: 10
+  until: helm_app_result.rc == 0
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Install Nginx Ingress Controller
+# ==========================
+- name: Install Nginx Ingress Controller
+  shell: |
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Deploy Monitoring Stack (kube-prometheus-stack)
+# ==========================
+- name: Add Prometheus Helm repo
+  shell: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+- name: Create monitoring namespace
+  shell: /usr/local/bin/k3s kubectl create namespace monitoring || true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+- name: Deploy kube-prometheus-stack
+  shell: |
+    helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+      --namespace monitoring \
+      --create-namespace \
+      --set grafana.service.type=NodePort \
+      --set grafana.service.nodePort=30090 \
+      --set grafana.adminPassword=admin123
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: helm_monitoring_result
+  retries: 2
+  delay: 10
+  until: helm_monitoring_result.rc == 0
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# Wait for Grafana and Prometheus pods
+# ==========================
+- name: Wait for Grafana pod to be ready
+  shell: |
+    kubectl -n monitoring wait --for=condition=Ready pod -l app.kubernetes.io/name=grafana,app.kubernetes.io/instance=monitoring --timeout=600s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+- name: Wait for Prometheus pods to be ready
+  shell: |
+    kubectl -n monitoring wait --for=condition=Ready pod -l app.kubernetes.io/name=prometheus --timeout=600s
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: "'k3s_server' in group_names"
+
+# ==========================
+# k3s agent installation
+# ==========================
+- name: Install k3s agent
+  shell: |
+    curl -sfL https://get.k3s.io | K3S_URL="https://{{ hostvars[groups['k3s_server'][0]].inventory_hostname }}:6443" \
+    K3S_TOKEN="{{ lookup('file', './node-token') }}" sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: "'k3s_agent' in group_names"

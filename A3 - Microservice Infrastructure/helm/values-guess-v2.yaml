@@ -1,0 +1,12 @@
+fullnameOverride: guess-v2
+frontend:
+  image: ghcr.io/s231854/guess:guess-v2   # oder mit @sha256:…
+  env:
+    - name: STREAMLIT_SERVER_BASE_URL_PATH
+      value: /guess/v2
+ingress:
+  hosts:
+    - host: ""
+      paths:
+        - path: /guess/v2
+          pathType: Prefix
