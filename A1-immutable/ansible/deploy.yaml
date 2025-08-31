@@ -1,0 +1,40 @@
+# aufgabe1-immutable/ansible/verify.yml
+- name: Verify immutable web VM
+  hosts: web
+  become: true
+  gather_facts: true
+  vars:
+    expected_version: "{{ lookup('env','IMMUTABLE_VERSION') | default('v1.0.0', true) }}"
+  tasks:
+    - name: Read immutable version file
+      ansible.builtin.slurp:
+        src: /etc/immutable_version
+      register: ver
+
+    - name: Assert version file matches expectation
+      ansible.builtin.assert:
+        that:
+          - (ver.content | b64decode | trim) == expected_version
+        fail_msg: "Version auf Host stimmt nicht!"
+
+    - name: Check nginx is running
+      ansible.builtin.service_facts:
+
+    - name: Assert nginx active
+      ansible.builtin.assert:
+        that:
+          - "'nginx.service' in ansible_facts.services"
+          - "ansible_facts.services['nginx.service'].state == 'running'"
+
+    - name: HTTP probe
+      ansible.builtin.uri:
+        url: "http://{{ inventory_hostname }}/"
+        return_content: true
+        status_code: 200
+      register: http
+
+    - name: Assert HTML contains version
+      ansible.builtin.assert:
+        that:
+          - "'Immutable Infrastructure' in http.content"
+          - expected_version in http.content
