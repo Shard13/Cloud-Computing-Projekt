@@ -1,5 +1,13 @@
 # Cloud Computing und Big Data
 
+
+Matrikelnummern: 6349055, 8562648, 7673841, 1629518
+
+Indieser README findest du die Dokumentation zu allen fünf Aufgaben der Portfolio-Prüfung im Modul Cloud Computing und Big Data.
+
+Unsere gewählte Anwendungsidee lautet Binance Market Data – Crypto-Tick Analytics mit dem Ziel, aus vorhandenen Daten Vorhersagen ableiten zu können.
+
+
 ## Aufgabe 3 – Microservice Infrastructure (Umsetzung von s231854)
 
 **Ziel:** Aufbau einer **Multi-Node Kubernetes**-Infrastruktur (OpenStack) mit **k3s**, **Helm** und **Monitoring**.
