@@ -1,0 +1,100 @@
+---
+- name: Deploy Streamlit app (Aufgabe 2)
+  hosts: all
+  become: true
+  vars:
+    app_user: "app"
+    app_root: "/opt/guess"
+    app_port: 8501
+    app_version: "{{ app_version | default(lookup('env','APP_VERSION') | default('v1', true), true) }}"
+  tasks:
+    - name: Ensure app user exists
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        system: true
+        create_home: false
+        shell: /usr/sbin/nologin
+
+    - name: Ensure base packages (python venv)
+      ansible.builtin.apt:
+        name: ["python3-venv", "python3-pip"]
+        update_cache: true
+        state: present
+
+    - name: Create releases and shared directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_root }}/releases"
+        - "{{ app_root }}/shared"
+
+    - name: Create new release dir
+      ansible.builtin.file:
+        path: "{{ app_root }}/releases/{{ app_version }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0755"
+
+    - name: Render app.py from provided template with selected version
+      ansible.builtin.template:
+        src: "app-{{ app_version }}.py.j2"
+        dest: "/opt/guess/releases/{{ release_id }}/app.py"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0644"
+
+    - name: Create venv for this release
+      ansible.builtin.command:
+        cmd: "python3 -m venv {{ app_root }}/releases/{{ app_version }}/venv"
+        creates: "{{ app_root }}/releases/{{ app_version }}/venv/bin/activate"
+
+    - name: Install app dependencies into the release venv
+      ansible.builtin.pip:
+        name:
+          - streamlit
+        virtualenv: "{{ app_root }}/releases/{{ app_version }}/venv"
+
+    - name: Symlink 'current' to this release (atomic switch)
+      ansible.builtin.file:
+        src: "{{ app_root }}/releases/{{ app_version }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        force: true
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+
+    - name: Install/Update systemd unit
+      ansible.builtin.template:
+        src: "templates/guess.service.j2"
+        dest: "/etc/systemd/system/guess.service"
+        mode: "0644"
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable & restart app
+      ansible.builtin.systemd:
+        name: guess
+        state: restarted
+        enabled: true
+
+    - name: Persist version for auditing
+      ansible.builtin.copy:
+        dest: /etc/app_version
+        content: "{{ app_version }}\n"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Health check (HTTP 200)
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/"
+        status_code: 200
+        return_content: false

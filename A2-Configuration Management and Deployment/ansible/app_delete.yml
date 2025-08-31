@@ -1,0 +1,29 @@
+---
+- name: Stop and remove Streamlit app
+  hosts: web
+  become: true
+  vars:
+    app_root: "/opt/guess"
+  tasks:
+    - name: Stop service if present
+      ansible.builtin.systemd:
+        name: guess
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable service
+      ansible.builtin.systemd:
+        name: guess
+        enabled: false
+      ignore_errors: true
+
+    - name: Remove unit file
+        # Remove unit if it exists
+      ansible.builtin.file:
+        path: /etc/systemd/system/guess.service
+        state: absent
+
+    - name: Remove app directories
+      ansible.builtin.file:
+        path: "{{ app_root }}"
+        state: absent

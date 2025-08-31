@@ -1,0 +1,15 @@
+[Unit]
+Description=Guess Number (Streamlit) {{ app_version }}
+After=network-online.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+WorkingDirectory={{ app_root }}/current
+Environment=PYTHONUNBUFFERED=1
+ExecStart={{ app_root }}/current/venv/bin/streamlit run {{ app_root }}/current/app.py --server.headless=true --server.port={{ app_port }}
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
