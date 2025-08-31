@@ -36,7 +36,7 @@ terraform apply -var-file=terraform.tfvars -var immutable_version=v1.1.0 -auto-a
 Durch `create_before_destroy` wird eine neue VM gebaut und die alte anschließend entfernt.
 
 
-## Aufgabe 3 – Microservice Infrastructure (Umsetzung von s231854)
+# Aufgabe 3 – Microservice Infrastructure (Umsetzung von s231854)
 
 **Ziel:** Aufbau einer **Multi-Node Kubernetes**-Infrastruktur (OpenStack) mit **k3s**, **Helm** und **Monitoring**.
 Als Beispiel-App deploye ich **zwei versionierte Streamlit-Varianten** derselben Anwendung:
