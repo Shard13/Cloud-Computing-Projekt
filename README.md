@@ -1,7 +1,7 @@
 # Cloud Computing und Big Data
 
 
-Matrikelnummern: 6349055, 8562648, 7673841, 1629518
+Matrikelnummern: 6349055, 8562648, 7673841, 1629518, 6549173 (6549173 wurde vergessen)
 
 Indieser README findest du die Dokumentation zu allen fünf Aufgaben der Portfolio-Prüfung im Modul Cloud Computing und Big Data.
 
